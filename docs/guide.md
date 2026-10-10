@@ -193,7 +193,142 @@ Failures are equally machine-readable and exit non-zero:
 ```
 
 `error_type` is one of `auth_error`, `not_found`, `api_error`, `config_error`,
-`invalid_input`.
+`invalid_input`, `invalid_select`, `io_error`, `skill_install_error`, `doctor_failed`.
+
+## Agents, output and diagnostics
+
+### Installing the skill into an AI agent
+
+`holst skill install` writes the bundled `SKILL.md` where your agent looks for
+skills. With no flags it asks which agents and whether the skill belongs to this
+directory or to your user account.
+
+| Agent | Project path | Global path |
+|---|---|---|
+| `claude-code` | `.claude/skills` | `~/.claude/skills` |
+| `cursor` | `.agents/skills` | `~/.cursor/skills` |
+| `codex` | `.agents/skills` | `~/.codex/skills` |
+| `copilot` | `.agents/skills` | `~/.copilot/skills` |
+| `gemini` | `.agents/skills` | `~/.gemini/skills` |
+| `universal` | `.agents/skills` | `~/.config/agents/skills` |
+
+Each path gets a `holst-cli/SKILL.md` below it. One canonical copy is written in
+the universal layout for the chosen scope; every other agent directory gets a
+relative link to it (computed from real paths, so a symlinked `~/.claude`
+works). When a link cannot be made, the file is copied and a warning says so.
+
+Flags that skip the picker:
+
+- `-a` / `--agent`: an agent to install for; repeat it for several.
+- `-g` / `--global` or `--project`: the scope.
+- `--dir DIRECTORY`: install into exactly this directory; bypasses the agent
+  layout and makes no links.
+- `-y`: do not prompt, take the defaults (the universal layout in this directory).
+
+`--json` never prompts: without `-a`, `-g`/`--project` or `-y` it fails with
+`invalid_input` naming those flags.
+
+```bash
+holst skill install -a claude-code -a cursor --project -y
+holst skill path
+```
+
+### Keeping output small: `--select` and `--out`
+
+Global flags go before the subcommand. Both imply `--json`.
+
+`--select PATHS` takes comma-separated dotted paths and keeps only those fields:
+
+- lists are walked and the shape is kept, so `boards.id` on a list of boards gives
+  `{"ok": true, "boards": [{"id": "b1"}, {"id": "b2"}]}`;
+- a path that does not exist gives `null`, never an error, so a `null` may be a
+  typo;
+- `ok` is always kept; `error_type` and `error` are kept only when `ok` is false;
+- an empty path (`--select ""` or `a,,b`) fails with `invalid_select`.
+
+```bash
+holst --select boards.id,boards.name board list
+```
+
+`--out FILE` writes the whole JSON result to the file and prints one line:
+
+```json
+{ "ok": true, "output": "/absolute/path/boards.json", "bytes": 1843 }
+```
+
+When a command fails (an error envelope), no file is written and the envelope is
+printed as usual (a file that cannot be written is `io_error`). The exception is
+a failing `doctor` report: it is still written to the file, and the summary line
+carries `"ok": false`, `error_type` and `error`. `--out` cannot be combined with
+`content raw --output` (`invalid_input`), `backup download` refuses it, and it
+is ignored with a warning for `completion` and the REPL. Combine it with
+`--select` to store a trimmed result.
+
+```bash
+holst --out boards.json board list
+```
+
+### Shell completion
+
+```bash
+holst completion bash > ~/.local/share/bash-completion/completions/holst
+holst completion zsh > "${fpath[1]}/_holst"
+holst completion fish > ~/.config/fish/completions/holst.fish
+```
+
+Homebrew installs all three for you. Inside the REPL, Tab completes commands
+and options, and history is kept in `repl_history` in the state directory.
+`--json` and `--base-url` given when the REPL starts apply to every line;
+`--select` and `--out` there are ignored with a warning.
+
+### Diagnostics: `holst doctor`
+
+`holst doctor` runs the checks below in order and prints a table with a hint
+under each problem. The exit code is 1 when a check fails. `--offline` skips
+the network checks; `--timeout SECONDS` (default 10) bounds each request.
+Credentials, tokens and cookies are always masked.
+
+| Check | ok | warn | fail |
+|---|---|---|---|
+| `version` | CLI version, Python, platform, install kind | - | - |
+| `state_dir` | exists and is writable | does not exist yet | exists and is not writable |
+| `credentials` | token and cookie both present | only one is present, or the file is readable by others | neither is present |
+| `base_url` | value and where it came from | - | - |
+| `node` | Node 21 or newer with `WebSocket` | missing or too old: `content` commands and live edits are unavailable | - |
+| `yjs` | the `yjs` package loads | not found or not loadable | - |
+| `api` | the host answered any HTTP response | - | no answer, or timeout |
+| `auth` | the stored credentials identify a user | - | rejected (401/403) or any other error |
+
+`api` and `auth` are skipped with `--offline`; `auth` is also skipped when
+`credentials` or `api` failed. In `--json` mode the report is
+`{"ok": ..., "checks": [...]}`, and a failing report carries
+`"error_type": "doctor_failed"` and an `error` summary.
+
+```bash
+holst doctor --offline
+holst --json doctor
+```
+
+### MCP server: `holst mcp`
+
+`holst mcp` serves Holst to an AI agent over the Model Context Protocol (stdio). Client setup is in the storefront README, section "MCP server". `holst mcp --read-only` lists only the read tools.
+
+| Tool | Does |
+|---|---|
+| `auth_whoami` | The signed-in account |
+| `workspace_list`, `workspace_get`, `workspace_tree` | Workspaces and their folders and boards |
+| `board_list` | Boards in a workspace, paginated, optional name filter |
+| `board_get`, `board_recent`, `board_members`, `board_comments`, `board_sharing` | One board with its url; recent boards; members; comment thread metadata; sharing settings |
+| `template_list`, `template_categories` | Templates |
+| `content_summary`, `content_objects`, `content_object_get`, `content_text` | Board contents: counts, objects (paginated), one object with its full text, all text |
+| `content_shapes` | Shape kinds, colours, frame ratios, arrow types (offline) |
+| `doctor` | The `holst doctor` report |
+| `board_create`, `board_rename`, `board_duplicate` | Write: boards |
+| `content_create`, `content_update` | Write: up to 100 objects per call, all or nothing |
+
+Results stay small: `board_list` and `content_objects` are paginated and return `{items, next_cursor}` (50 by default, 100 at most); the other lists (workspaces, the workspace tree, recent boards, members, comment threads, templates) come whole, since they grow with the account rather than with board content. Texts come in windows (`offset`, `max_chars`, then `text_next_offset`); `raw` payloads appear only where asked for, with long strings cut. Board contents are cached for 30 s per board (`refresh: true` reloads) and every content result carries `source`: live or snapshot, its age, and why it is stale.
+
+A failed call returns an error result whose text starts with its type: `auth_error`, `not_found`, `api_error`, `holst_error`, `hud_error`, `object_not_found`, `write_error`, `config_error`, `invalid_input`, `read_only` or `internal_error`. The CLI's `--json` uses the same names, plus `invalid_select`, `io_error`, `no_input` and `skill_install_error`. The `doctor` tool reports failed checks inside a normal result (`ok: false`, `error_type: doctor_failed`), not as a tool error.
 
 ## How board contents work
 
@@ -300,6 +435,9 @@ the CLI — `--json` in, ids out:
 | Variable | Purpose | Default |
 |---|---|---|
 | `HOLST_TOKEN` | Session token, overrides the stored file | — |
+| `HOLST_COOKIE` | Session cookie; Holst SaaS needs it together with the token | — |
+| `HOLST_NODE` | Node binary for board contents and live edits | `node` on `PATH` |
+| `HOLST_YJS_PATH` | Directory that directly contains the `yjs` package (normally a `node_modules` directory) | searched in order: this variable; `<executable dir>/runtime/node_modules` (prebuilt binary installs only); `<state dir>/node/node_modules`; `NODE_PATH`; the global npm root |
 | `HOLST_BASE_URL` | Service host (on-premise installs) | `https://app.holst.so` |
 | `HOLST_AUTH_SCHEME` | Token header form: `bearer`, `token`, `raw`, `x-auth-token` | `bearer` |
 | `HOLST_CLI_STATE_DIR` | Session/credentials directory | `~/.config/holst-cli` |

@@ -16,6 +16,8 @@ Command-line interface to **Holst** (<https://holst.so>), a hosted collaborative
 whiteboard. The CLI calls the same HTTP API the official web client uses — it
 does not re-implement Holst, and it requires a real account.
 
+If the holst MCP server is connected (`holst mcp`), prefer its tools to running `holst` commands.
+
 ## Installation
 
 ```bash
@@ -29,6 +31,14 @@ Prebuilt releases support macOS Apple Silicon and Linux x86-64 and include
 Python, Node and Yjs. Network access to `https://app.holst.so` is required.
 For a source checkout: `pip install -e .` (Python 3.10+), plus Node 21+ and
 `npm install --prefix ~/.config/holst-cli/node yjs`.
+
+Install this skill for your agent:
+
+```bash
+holst skill install -a claude-code --project -y
+```
+
+`-a` is repeatable (`claude-code`, `cursor`, `codex`, `copilot`, `gemini`, `universal`); `-g` installs for the whole user account instead of this directory. `holst skill path` prints where the bundled file lives.
 
 ## Authentication - the traps to avoid
 
@@ -71,6 +81,12 @@ holst --json auth status --verify
    | `not_found` | Board/workspace does not exist (404) | Re-list to get valid ids |
    | `api_error` | Rate limit, server error, unreachable | Retry or report |
    | `invalid_input` | Bad arguments | Fix the command |
+   | `invalid_select` | A `--select` path is empty (`""` or `a,,b`) | Fix the path |
+   | `io_error` | A local file could not be read or written (`--out`) | Check the path and permissions |
+   | `skill_install_error` | `skill install` could not write the skill | Read the message; fix the target directory |
+   | `doctor_failed` | `holst doctor` found a failing check | Read the `checks` list and follow each `hint` |
+
+   When something fails and the cause is unclear, run `holst --json doctor` first: it checks versions, the state directory, credentials, Node, yjs and the API, and names a fix for each problem.
 3. **Inspect before mutating.** Run `board info` or `content summary` before
    renaming or deleting.
 4. **Deletion is confirmed by default.** Non-interactive calls need `-y`, and
@@ -78,6 +94,25 @@ holst --json auth status --verify
    unless the user asked for permanent deletion.
 5. **Select context once.** `workspace use <ID>` and `board use <ID>` persist in
    the session file, so later commands can omit ids.
+
+## Keeping results out of your context
+
+Global flags go **before** the subcommand.
+
+- `--select` keeps only the dotted fields you name; lists are walked for you and the shape is kept:
+
+  ```bash
+  holst --select workspaces.id,workspaces.name workspace list
+  ```
+
+  A field that does not exist comes back as `null`, never as an error, so a `null` may be a typo: check the spelling against the full output once.
+- `--out FILE` writes the whole JSON result to a file and prints one line, `{"ok": true, "output": "/abs/path", "bytes": N}`; read the file with your own tools only when you need it:
+
+  ```bash
+  holst --out boards.json board list
+  ```
+
+Both imply `--json`. When a command fails (an error envelope) no file is written and the envelope is printed as usual; a failing `holst doctor` report is still written, and the summary line carries `"ok": false`, `error_type` and `error`.
 
 ## Command groups
 
@@ -268,6 +303,9 @@ $ holst --json board list      # without credentials
 | `HOLST_BASE_URL` | Service host, for on-premise installations |
 | `HOLST_CLI_STATE_DIR` | Where session and credentials are kept |
 | `HOLST_AUTH_SCHEME` | Token header form (`bearer` by default) |
+| `HOLST_COOKIE` | Session cookie; Holst SaaS needs it together with the token |
+| `HOLST_NODE` | Path to the Node binary used for board contents and live edits |
+| `HOLST_YJS_PATH` | Directory that directly contains the `yjs` package (normally a `node_modules` directory) |
 
 ## Cautions
 
