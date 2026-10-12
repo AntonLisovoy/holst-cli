@@ -42,7 +42,7 @@ holst skill install -a claude-code --project -y
 
 ## Authentication - the traps to avoid
 
-Both verified against the live service:
+Verified against the live service:
 
 - A **personal access token** from the Holst UI carries a single scope,
   `organization:audit_events_read`. It **cannot** list or create boards. If a
@@ -50,6 +50,39 @@ Both verified against the live service:
 - **A token alone is never enough.** Holst checks the session cookie *and* the
   bearer token together; either alone returns 401. Signing in stores both, and
   `auth status` warns when only one half is present.
+- **Stored** credentials are bound to the host you signed in to. With
+  `--base-url` pointing elsewhere, holst refuses to send them before any
+  request is made (checked with `--base-url https://example.invalid`) and
+  tells you to sign in for that host.
+- `holst auth pair` stores a working session (token plus the `sessionToken`
+  and `holst-signed-user` cookies); `auth status --verify` and `board list`
+  work with it.
+- `holst auth logout` revokes the session on the server (`server_revoked:
+  true`) and removes the local token, cookie and host; the old token then
+  gets 401.
+- `holst auth sessions revoke ID -y` signs out one session (401 for it
+  afterwards); without `-y` and without a terminal it is refused.
+- REPL history masks a token typed on the command line.
+
+Implemented, not yet verified against the live service:
+
+- `HOLST_BASE_URL` pointing elsewhere is treated like `--base-url`.
+  `HOLST_TOKEN` and `HOLST_COOKIE` from the environment are explicit and are
+  not host-bound: they are sent to whatever host is in use.
+- `holst auth logout --local` skips the server. If the server revoke fails,
+  local credentials are still cleared; the command exits 0 with a warning and
+  `server_revoked: false` under `--json`.
+- `holst auth logout --all-others -y` signs out all other sessions and keeps
+  the current one.
+
+**Pairing without the desktop app.** Run `holst auth pair` (or
+`holst --json auth pair`, then later `holst auth redeem CODE` from the same
+machine within 15 minutes). Open `/app-auth/<request id>/grant` on the Holst
+host in a signed-in browser with DevTools -> Network open, press the approve
+button, and copy `data.code` from the `app_auth/<id>/grant` response; the
+`holst://` link it then opens needs the desktop app and can be ignored. The
+grant link works once: a second click returns `app-auth-grant-expired`, so
+start a new `holst auth pair` instead.
 
 ```bash
 holst auth login --email you@example.com    # prompts; password never stored
@@ -120,7 +153,7 @@ Both imply `--json`. When a command fails (an error envelope) no file is written
 |---|---|
 | `auth` | Token management, pairing, `whoami`, sessions, personal access tokens |
 | `workspace` | List workspaces, select one, show the space/board tree, member counts |
-| `board` | List, search, create, rename, duplicate, move to trash, delete, share, members, comments, recents, favorites |
+| `board` | List, search, create, rename, duplicate, move into a folder or to the root, move to trash, delete, share, members, comments, recents, favorites |
 | `content` | Read a board (`summary`, `objects`, `text`, `raw`, `shapes`) and write to it (`add-frame`, `add-sticker`, `add-text`, `add-shape`, `add-card`, `add-arrow`, `update`, `delete`, `apply`) |
 | `backup` | List and download board snapshots |
 | `template` | Browse standard/personal/workspace templates and categories |
@@ -205,9 +238,10 @@ holst --json content delete --object <ID> -y   # -y is required
 
 `update` rewrites only the fields named; `--text` retypes the body in place, so
 a collaborator with the board open sees the change without reloading. `delete`
-takes a frame's contents with it unless `--keep-children` is passed, and prompts
-for confirmation unless `-y` is given — including in `--json` mode, so an agent
-has to say so explicitly.
+takes a frame's contents with it unless `--keep-children` is passed. At a
+terminal it asks first; without one (an agent, a pipe) it does not prompt and
+fails with `error_type: "no_input"` ("pass -y"), so an agent has to pass `-y`
+explicitly. A piped `y` is not accepted.
 
 One transaction can create, change and remove at once:
 
@@ -300,7 +334,7 @@ $ holst --json board list      # without credentials
 | Variable | Purpose |
 |---|---|
 | `HOLST_TOKEN` | Session token; overrides the stored credentials file |
-| `HOLST_BASE_URL` | Service host, for on-premise installations |
+| `HOLST_BASE_URL` | Service host, for on-premise installations; overrides the stored host (`--base-url` overrides both) |
 | `HOLST_CLI_STATE_DIR` | Where session and credentials are kept |
 | `HOLST_AUTH_SCHEME` | Token header form (`bearer` by default) |
 | `HOLST_COOKIE` | Session cookie; Holst SaaS needs it together with the token |

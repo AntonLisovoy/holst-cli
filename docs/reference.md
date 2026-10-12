@@ -22,6 +22,7 @@ how the commands fit together.
     - [`holst auth redeem`](#holst-auth-redeem)
     - [`holst auth send-code`](#holst-auth-send-code)
     - [`holst auth sessions`](#holst-auth-sessions)
+      - [`holst auth sessions revoke`](#holst-auth-sessions-revoke)
     - [`holst auth status`](#holst-auth-status)
     - [`holst auth token`](#holst-auth-token)
       - [`holst auth token create`](#holst-auth-token-create)
@@ -40,6 +41,7 @@ how the commands fit together.
     - [`holst board info`](#holst-board-info)
     - [`holst board list`](#holst-board-list)
     - [`holst board members`](#holst-board-members)
+    - [`holst board move`](#holst-board-move)
     - [`holst board recent`](#holst-board-recent)
     - [`holst board rename`](#holst-board-rename)
     - [`holst board restore`](#holst-board-restore)
@@ -129,12 +131,12 @@ Options:
 Commands:
   diagnose   Work out why authentication is failing, without revealing...
   login      Store a session token, or obtain one with email and password.
-  logout     Remove the stored token.
+  logout     Sign out: revoke the session on the server, then forget it...
   methods    Show which sign-in methods an email address can use.
   pair       Pair this CLI with your Holst account the way the desktop...
   redeem     Redeem a granted pairing code for a session token.
   send-code  Ask Holst to mail a one-time password.
-  sessions   List active sessions on the account.
+  sessions   List active sessions on the account, or revoke one.
   status     Show credential configuration; --verify checks it against...
   token      Manage personal access tokens (scope: organization audit...
   whoami     Show the authenticated Holst account.
@@ -186,10 +188,13 @@ Options:
 ```text
 Usage: holst auth logout [OPTIONS]
 
-  Remove the stored token.
+  Sign out: revoke the session on the server, then forget it locally.
 
 Options:
-  -h, --help  Show this message and exit.
+  --local       Only forget local credentials.
+  --all-others  Sign out every other session of this account; keep this one.
+  -y, --yes     Skip the confirmation prompt.
+  -h, --help    Show this message and exit.
 ```
 
 ## holst auth methods
@@ -246,11 +251,26 @@ Options:
 ## holst auth sessions
 
 ```text
-Usage: holst auth sessions [OPTIONS]
+Usage: holst auth sessions [OPTIONS] [COMMAND] [ARGS]...
 
-  List active sessions on the account.
+  List active sessions on the account, or revoke one.
 
 Options:
+  -h, --help  Show this message and exit.
+
+Commands:
+  revoke  Sign one session out (ids come from `holst auth sessions`).
+```
+
+## holst auth sessions revoke
+
+```text
+Usage: holst auth sessions revoke [OPTIONS] SESSION_ID
+
+  Sign one session out (ids come from `holst auth sessions`).
+
+Options:
+  -y, --yes   Skip the confirmation prompt.
   -h, --help  Show this message and exit.
 ```
 
@@ -394,7 +414,8 @@ Commands:
   info       Show a board (defaults to the selected one).
   list       List boards in a workspace.
   members    List users with explicit access to a board.
-  recent     List recently opened boards.
+  move       Move a board into a folder, or back to the workspace root.
+  recent     List recently opened boards, newest first.
   rename     Rename a board.
   restore    Restore a board from the workspace trash.
   share      Show or update link-sharing settings.
@@ -508,15 +529,37 @@ Options:
   -h, --help    Show this message and exit.
 ```
 
+## holst board move
+
+```text
+Usage: holst board move [OPTIONS] [BOARD_ID]
+
+  Move a board into a folder, or back to the workspace root.
+
+Options:
+  --into TEXT            Folder (space) id to move into, from `holst workspace
+                         tree`.
+  --root                 Move to the top level of the workspace.
+  --index INTEGER RANGE  Position among the new parent's items, 0 first.
+                         [x>=0]
+  -h, --help             Show this message and exit.
+```
+
 ## holst board recent
 
 ```text
 Usage: holst board recent [OPTIONS]
 
-  List recently opened boards.
+  List recently opened boards, newest first.
+
+  With no options every recent board is listed. --limit or --cursor shows one
+  page, and how to get the next one.
 
 Options:
-  -h, --help  Show this message and exit.
+  -n, --limit INTEGER RANGE  Show one page of at most this many boards
+                             (1-100).  [1<=x<=100]
+  --cursor TEXT              Show the page after this next_cursor.
+  -h, --help                 Show this message and exit.
 ```
 
 ## holst board rename
@@ -772,7 +815,7 @@ Usage: holst content apply [OPTIONS]
 
 Options:
   --board TEXT     Board to write to.
-  -f, --file PATH  JSON list of operations, or {"objects": [...]}. An entry
+  -f, --file FILE  JSON list of operations, or {"objects": [...]}. An entry
                    with no "op" creates an object of its "type" (frame,
                    sticker, text, shape, card, arrow) and its remaining keys
                    match that add-* command's options; "op": "update" or

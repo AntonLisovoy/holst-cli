@@ -129,9 +129,10 @@ holst board create --name "Sprint 42 Retro" --use
 holst board info
 holst board rename "Sprint 42 Retro (archived)"
 holst board duplicate --name "Sprint 43 Retro"
+holst board move --into <FOLDER_ID>              # into a folder; --root takes it out
 holst board url
 holst board members
-holst board recent
+holst board recent --limit 10                     # newest first; --cursor continues
 holst board favorites --add <BOARD_ID>
 holst board delete --board <BOARD_ID>            # to trash
 holst board restore <BOARD_ID>                   # back from trash
@@ -326,7 +327,7 @@ holst --json doctor
 | `board_create`, `board_rename`, `board_duplicate` | Write: boards |
 | `content_create`, `content_update` | Write: up to 100 objects per call, all or nothing |
 
-Results stay small: `board_list` and `content_objects` are paginated and return `{items, next_cursor}` (50 by default, 100 at most); the other lists (workspaces, the workspace tree, recent boards, members, comment threads, templates) come whole, since they grow with the account rather than with board content. Texts come in windows (`offset`, `max_chars`, then `text_next_offset`); `raw` payloads appear only where asked for, with long strings cut. Board contents are cached for 30 s per board (`refresh: true` reloads) and every content result carries `source`: live or snapshot, its age, and why it is stale.
+Results stay small: `board_list`, `board_recent` and `content_objects` are paginated and return `{items, next_cursor}` (50 by default, 100 at most); the other lists (workspaces, the workspace tree, members, comment threads, templates) come whole, since they grow with the account rather than with board content. Texts come in windows (`offset`, `max_chars`, then `text_next_offset`); `raw` payloads appear only where asked for, with long strings cut. Board contents are cached for 30 s per board (`refresh: true` reloads) and every content result carries `source`: live or snapshot, its age, and why it is stale.
 
 A failed call returns an error result whose text starts with its type: `auth_error`, `not_found`, `api_error`, `holst_error`, `hud_error`, `object_not_found`, `write_error`, `config_error`, `invalid_input`, `read_only` or `internal_error`. The CLI's `--json` uses the same names, plus `invalid_select`, `io_error`, `no_input` and `skill_install_error`. The `doctor` tool reports failed checks inside a normal result (`ok: false`, `error_type: doctor_failed`), not as a tool error.
 
