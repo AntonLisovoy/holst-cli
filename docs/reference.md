@@ -698,6 +698,11 @@ Options:
                                   Arrowhead at the end.
   --frame TEXT                    Id of the frame to place this inside.
                                   Coordinates stay absolute.
+  --id TEXT                       Id for the new object. Re-running with the
+                                  same id adds nothing if it is already on the
+                                  board.
+  --dry-run                       Build the plan against the live board and
+                                  print it; write nothing.
   -h, --help                      Show this message and exit.
 ```
 
@@ -717,6 +722,10 @@ Options:
                    absolute.
   -t, --text TEXT  Card body.
   --width FLOAT    Width, in points. Height follows the text.
+  --id TEXT        Id for the new object. Re-running with the same id adds
+                   nothing if it is already on the board.
+  --dry-run        Build the plan against the live board and print it; write
+                   nothing.
   -h, --help       Show this message and exit.
 ```
 
@@ -741,6 +750,11 @@ Options:
   -n, --name TEXT                 Frame label.
   --width FLOAT                   Custom width, in points.
   --height FLOAT                  Custom height, in points.
+  --id TEXT                       Id for the new object. Re-running with the
+                                  same id adds nothing if it is already on the
+                                  board.
+  --dry-run                       Build the plan against the live board and
+                                  print it; write nothing.
   -h, --help                      Show this message and exit.
 ```
 
@@ -765,6 +779,10 @@ Options:
   --height FLOAT        Height, in points.
   --stroke TEXT         Outline colour.
   --stroke-width FLOAT  Outline thickness, in points.
+  --id TEXT             Id for the new object. Re-running with the same id
+                        adds nothing if it is already on the board.
+  --dry-run             Build the plan against the live board and print it;
+                        write nothing.
   -h, --help            Show this message and exit.
 ```
 
@@ -784,6 +802,10 @@ Options:
                    absolute.
   -t, --text TEXT  Note body.
   --size FLOAT     Square side, in points.  [default: 192.0]
+  --id TEXT        Id for the new object. Re-running with the same id adds
+                   nothing if it is already on the board.
+  --dry-run        Build the plan against the live board and print it; write
+                   nothing.
   -h, --help       Show this message and exit.
 ```
 
@@ -803,6 +825,10 @@ Options:
                    absolute.
   -t, --text TEXT  The text itself.
   --width FLOAT    Fixed wrapping width. Omitted, the text sizes itself.
+  --id TEXT        Id for the new object. Re-running with the same id adds
+                   nothing if it is already on the board.
+  --dry-run        Build the plan against the live board and print it; write
+                   nothing.
   -h, --help       Show this message and exit.
 ```
 
@@ -820,6 +846,8 @@ Options:
                    sticker, text, shape, card, arrow) and its remaining keys
                    match that add-* command's options; "op": "update" or
                    "delete" names an existing "id".  [required]
+  --dry-run        Build the plan against the live board and print it; write
+                   nothing.
   -h, --help       Show this message and exit.
 ```
 
@@ -831,17 +859,21 @@ Usage: holst content delete [OPTIONS]
   Remove objects from a board.
 
   A frame takes its contents with it, as it does in Holst; --keep-children
-  leaves them behind at the top level. This cannot be undone from the CLI --
-  the board's own undo history belongs to the browser session that made the
-  change.
+  keeps them, moved to the enclosing frame or the top level; arrows attached
+  to a deleted object are detached where they were. This cannot be undone from
+  the CLI -- the board's own undo history belongs to the browser session that
+  made the change.
 
 Options:
   --board TEXT                 Board to write from.
   --object TEXT                Id of an object to remove. Repeatable.
                                [required]
   --keep-children / --cascade  Whether the contents of a deleted frame stay on
-                               the board.  [default: cascade]
+                               the board (moved to the enclosing frame, or the
+                               top level).  [default: cascade]
   -y, --yes                    Skip the confirmation prompt.
+  --dry-run                    Build the plan against the live board and print
+                               it; write nothing.
   -h, --help                   Show this message and exit.
 ```
 
@@ -955,6 +987,8 @@ Options:
   --frame TEXT     Move into this frame. Pass "none" to take it out of one.
   --to-front       Put it above everything else.
   --to-back        Put it below everything else.
+  --dry-run        Build the plan against the live board and print it; write
+                   nothing.
   -h, --help       Show this message and exit.
 ```
 

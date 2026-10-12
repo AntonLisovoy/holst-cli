@@ -256,6 +256,11 @@ One transaction can create, change and remove at once:
 If any id in the file is not on the board, **nothing** is written and the error
 names the id.
 
+Give every created object an `id` (`--id`, or `"id"` in an apply item). If a
+write fails with `write_unconfirmed`, re-run the same call with the same ids;
+do not re-read and rebuild. Use `dry_run` / `--dry-run` to preview deletes and
+large batches.
+
 ### Archive a board offline
 
 ```bash

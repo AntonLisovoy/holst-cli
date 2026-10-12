@@ -148,6 +148,7 @@ holst content objects --snapshot-only     # skip the live session
 # Writing board contents
 holst content add-frame --ratio 16:9 --name "Sprint 43"
 holst content add-sticker --text "Ship the harness" --color yellow4
+holst content add-sticker --text "Retry-safe" --id <UUID>   # same id again adds nothing
 holst content add-sticker --text "Inside the frame" --frame <FRAME_ID>
 holst content add-text --text "Heading" --x 40 --y 40
 holst content add-shape --kind flowchart-decision --text "Ship?"
@@ -161,6 +162,7 @@ holst content update --object <ID> --text "Reworded" --color red6
 holst content update --object <ID> --x 400 --y 200 --to-front
 holst content update --object <ID> --frame <FRAME_ID>
 holst content delete --object <ID>          # a frame takes its contents
+holst content delete --object <ID> --dry-run   # print the plan, write nothing
 
 # Snapshots
 holst backup list
@@ -325,11 +327,11 @@ holst --json doctor
 | `content_shapes` | Shape kinds, colours, frame ratios, arrow types (offline) |
 | `doctor` | The `holst doctor` report |
 | `board_create`, `board_rename`, `board_duplicate` | Write: boards |
-| `content_create`, `content_update` | Write: up to 100 objects per call, all or nothing |
+| `content_create`, `content_update` | Write: up to 100 objects per call, all or nothing; items take `id`, and `dry_run: true` returns the plan without writing |
 
 Results stay small: `board_list`, `board_recent` and `content_objects` are paginated and return `{items, next_cursor}` (50 by default, 100 at most); the other lists (workspaces, the workspace tree, members, comment threads, templates) come whole, since they grow with the account rather than with board content. Texts come in windows (`offset`, `max_chars`, then `text_next_offset`); `raw` payloads appear only where asked for, with long strings cut. Board contents are cached for 30 s per board (`refresh: true` reloads) and every content result carries `source`: live or snapshot, its age, and why it is stale.
 
-A failed call returns an error result whose text starts with its type: `auth_error`, `not_found`, `api_error`, `holst_error`, `hud_error`, `object_not_found`, `write_error`, `config_error`, `invalid_input`, `read_only` or `internal_error`. The CLI's `--json` uses the same names, plus `invalid_select`, `io_error`, `no_input` and `skill_install_error`. The `doctor` tool reports failed checks inside a normal result (`ok: false`, `error_type: doctor_failed`), not as a tool error.
+A failed call returns an error result whose text starts with its type: `auth_error`, `not_found`, `api_error`, `holst_error`, `hud_error`, `object_not_found`, `write_error`, `write_unconfirmed`, `config_error`, `invalid_input`, `read_only` or `internal_error`. The CLI's `--json` uses the same names, plus `invalid_select`, `io_error`, `no_input` and `skill_install_error`. The `doctor` tool reports failed checks inside a normal result (`ok: false`, `error_type: doctor_failed`), not as a tool error.
 
 ## How board contents work
 
@@ -377,16 +379,36 @@ entry with `"op": "update"` or `"op": "delete"` names an existing `id`:
 
 Ids are not allocated by the server, so giving the frame an explicit `frame_id`
 lets the notes name it as their `parent_id` in the same file. Omit it and the
-frame gets a generated id, which only exists after the write.
+frame gets a generated id, which only exists after the write. Any create entry
+may carry an `"id"` (the MCP items take `id` too; `frame_id` is the same key
+for a frame), and every `add-*` command takes `--id`. If the board already
+holds that id with the same type, the entry is skipped; with another type, or
+twice in one file, the whole plan is refused. Re-running a write with the same
+ids is therefore safe.
+
+`--dry-run` (on every `content add-*`, `update`, `delete` and `apply`; `dry_run`
+on the MCP tools) builds the plan against the live board and prints what would
+be created, changed and removed, and writes nothing.
 
 If any id in the file is wrong -- an edit or delete naming an object that is not
-there, or a `parent_id` naming a frame that is not -- **nothing** is written and
-the error names the id. A file may name a frame it creates further down.
+there, or a `parent_id` or arrow end naming an object that is not, or one the
+same plan deletes -- **nothing** is written and the error names the id. A file
+may name a frame it creates further down. The references are checked again in
+the write session; a board that changed under the plan makes the helper refuse it (its
+internal exit 9) and nothing is written. The command then rebuilds the plan once
+against the board as it is. The rebuilt plan may fail validation (`invalid_input`,
+for example a target that has vanished) with no further write; a second stale-plan
+refusal is reported as `object_not_found` (the CLI exits 1).
 
 **Editing** rewrites the fields named and leaves the rest alone; `--text`
 retypes the body in place, so anyone with that board open sees the change
 without reloading. **Deleting** a frame takes its contents with it, as it does
-in Holst; `--keep-children` leaves them behind. Neither can be undone from the
+in Holst; `--keep-children` leaves them behind, moved to the enclosing frame
+(or the top level), and an arrow end stuck to a deleted object becomes a free
+point approximately where it was drawn. If the connection drops after the update was sent,
+the command fails with `error_type` `write_unconfirmed` (helper exit 10, CLI exit 1; tell cases apart by `error_type`): the board may have applied it, and
+`--json` lists the `created`, `updated` and `deleted` ids; re-run with the same
+ids. Neither can be undone from the
 CLI: a board's undo history belongs to the browser session that made the change.
 
 Colours are Holst palette tokens -- one of `white`, `amber`, `blue`, `brown`,
