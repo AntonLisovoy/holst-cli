@@ -15,6 +15,8 @@ how the commands fit together.
 - [`holst`](#holst)
   - [`holst auth`](#holst-auth)
     - [`holst auth diagnose`](#holst-auth-diagnose)
+    - [`holst auth handler`](#holst-auth-handler)
+      - [`holst auth handler remove`](#holst-auth-handler-remove)
     - [`holst auth login`](#holst-auth-login)
     - [`holst auth logout`](#holst-auth-logout)
     - [`holst auth methods`](#holst-auth-methods)
@@ -106,7 +108,7 @@ Options:
   -h, --help       Show this message and exit.
 
 Commands:
-  auth        Manage the personal access token used to reach Holst.
+  auth        Sign in to Holst and manage the stored session.
   backup      Download board snapshots (the "version history" of a board).
   board       Create, inspect, and manage boards.
   completion  Print the shell completion script for SHELL.
@@ -125,17 +127,21 @@ Commands:
 ```text
 Usage: holst auth [OPTIONS] COMMAND [ARGS]...
 
-  Manage the personal access token used to reach Holst.
+  Sign in to Holst and manage the stored session.
+
+  Start with `holst auth login`: it opens the browser and pairs this CLI with
+  your account (the same as `holst auth pair`).
 
 Options:
   -h, --help  Show this message and exit.
 
 Commands:
   diagnose   Work out why authentication is failing, without revealing...
-  login      Store a session token, or obtain one with email and password.
+  handler    Show who opens holst:// links (macOS).
+  login      Sign in.
   logout     Sign out: revoke the session on the server, then forget it...
   methods    Show which sign-in methods an email address can use.
-  pair       Pair this CLI with your Holst account the way the desktop...
+  pair       Sign in through the browser, the way the desktop app does...
   redeem     Redeem a granted pairing code for a session token.
   send-code  Ask Holst to mail a one-time password.
   sessions   List active sessions on the account, or revoke one.
@@ -160,16 +166,45 @@ Options:
   -h, --help        Show this message and exit.
 ```
 
+## holst auth handler
+
+```text
+Usage: holst auth handler [OPTIONS] [COMMAND] [ARGS]...
+
+  Show who opens holst:// links (macOS).
+
+  `auth pair` makes its own small app the handler only while it waits for the
+  browser, then gives the links back (normally to Holst Desktop).
+
+Options:
+  -h, --help  Show this message and exit.
+
+Commands:
+  remove  Give holst:// links back, then delete the pairing app.
+```
+
+## holst auth handler remove
+
+```text
+Usage: holst auth handler remove [OPTIONS]
+
+  Give holst:// links back, then delete the pairing app.
+
+Options:
+  -h, --help  Show this message and exit.
+```
+
 ## holst auth login
 
 ```text
 Usage: holst auth login [OPTIONS]
 
-  Store a session token, or obtain one with email and password.
+  Sign in. Without options, approve this CLI in the browser (`auth pair`).
 
-  A personal access token from the Holst UI will NOT work here: it only grants
-  the organization audit-events scope. Use `auth pair`, --email, or copy the
-  session token your browser holds.
+  --email signs in with a password or a mailed one-time code; --token and
+  --cookie store what your browser holds. A personal access token from the
+  Holst UI will NOT work here: it only grants the organization audit-events
+  scope.
 
 Options:
   -t, --token TEXT  Session token (from the browser or `auth pair`).
@@ -219,11 +254,20 @@ Options:
 ```text
 Usage: holst auth pair [OPTIONS]
 
-  Pair this CLI with your Holst account the way the desktop app does.
+  Sign in through the browser, the way the desktop app does (recommended).
+
+  Opens the approval page in your browser. Press "Open in the app" there and,
+  on macOS, the code comes back to the CLI by itself: while it waits, the CLI
+  makes its own small app the holst:// link handler, and gives the links back
+  (normally to Holst Desktop) when it is done. Elsewhere, paste the code. With
+  --json the request is only started; finish it with `auth redeem CODE`.
 
 Options:
   --app-type TEXT  Pairing client type.  [default: desktop]
   --no-store       Print the token instead of storing it.
+  --no-browser     Print the approval link; do not open it.
+  --no-handler     Do not catch the holst:// link (macOS); paste the code
+                   instead.
   -h, --help       Show this message and exit.
 ```
 

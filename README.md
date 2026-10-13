@@ -26,11 +26,12 @@ to `PATH` if prompted. Run it again to update; with Homebrew use
 
 ```sh
 holst --version
-holst auth login --email you@example.com
+holst auth login
 holst --help
 ```
 
-Requires a Holst account. Sign-in stores both the session cookie and token;
+`holst auth login` opens Holst in your browser; press "Open in the app"
+there to finish. Requires a Holst account. Sign-in stores both the session cookie and token;
 a personal access token cannot manage boards.
 
 ## Agent skill

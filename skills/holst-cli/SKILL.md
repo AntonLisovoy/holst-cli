@@ -75,19 +75,22 @@ Implemented, not yet verified against the live service:
 - `holst auth logout --all-others -y` signs out all other sessions and keeps
   the current one.
 
-**Pairing without the desktop app.** Run `holst auth pair` (or
-`holst --json auth pair`, then later `holst auth redeem CODE` from the same
-machine within 15 minutes). Open `/app-auth/<request id>/grant` on the Holst
-host in a signed-in browser with DevTools -> Network open, press the approve
-button, and copy `data.code` from the `app_auth/<id>/grant` response; the
-`holst://` link it then opens needs the desktop app and can be ignored. The
-grant link works once: a second click returns `app-auth-grant-expired`, so
-start a new `holst auth pair` instead.
+**Signing in: browser pairing (recommended).** A user at a terminal runs
+`holst auth login` (the same as `holst auth pair`): it opens
+`/app-auth/<request id>/grant` in their browser, they press "Open in the app",
+and on macOS the code returns to the CLI: only while it waits, the CLI is the
+`holst://` link handler, and Holst Desktop gets the links back afterwards
+(`holst auth handler` shows who has them). An agent without a terminal runs `holst --json auth pair`, gives
+the user the returned `grant_url`, and then runs `holst auth redeem CODE`
+on the same machine within 15 minutes; `CODE` may also be the whole
+`holst://` link. Where no handler catches the link, the user copies `code`
+from the `grant` response in DevTools -> Network. The grant link works once:
+a second click returns `app-auth-grant-expired`, so start a new pairing.
 
 ```bash
+holst auth login                            # browser pairing (recommended)
 holst auth login --email you@example.com    # prompts; password never stored
 printf '%s' "$PW" | holst auth login --email you@example.com --password-stdin
-holst auth pair                             # desktop-style pairing
 holst auth methods --email you@example.com  # permitted sign-in methods
 holst auth diagnose                         # which credential form works
 ```
@@ -109,7 +112,7 @@ holst --json auth status --verify
 2. **Branch on `error_type`**, not on message text:
    | `error_type` | Meaning | What to do |
    |---|---|---|
-   | `config_error` | No token configured | Tell the user to run `auth pair` |
+   | `config_error` | No token configured | Tell the user to run `holst auth login` |
    | `auth_error` | Token rejected or lacks access (401/403) | Token may be a PAT or expired; re-authenticate |
    | `not_found` | Board/workspace does not exist (404) | Re-list to get valid ids |
    | `api_error` | Rate limit, server error, unreachable | Retry or report |

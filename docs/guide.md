@@ -70,15 +70,39 @@ Signing in stores both halves, so this is usually invisible - but it explains wh
 (a CSRF token, not the session token) authenticates nothing.
 
 ```bash
-# Recommended: email and password. The password is never stored;
-# the resulting token and cookie are.
+# Recommended: sign in through the browser, the way the desktop app does
+holst auth login            # the same as `holst auth pair`
+```
+
+`holst auth login` opens the approval page (`/app-auth/<id>/grant`) in your
+browser. Press "Open in the app" there. On macOS the code comes back to the
+CLI by itself. The page hands the code to a `holst://` link, so while
+`auth pair` waits, and only then, the CLI makes a small applet
+(`~/Library/Application Support/holst-cli/`) the handler for that scheme.
+When the pairing ends (signed in, failed or interrupted) the previous handler,
+normally Holst Desktop, gets the links back, so the desktop app keeps working
+as before. Even if the CLI is killed, the applet passes any link to the
+desktop app once the CLI that asked for it is gone.
+
+The browser may ask once whether to open "Holst CLI Pairing"; allow it. The
+applet only writes the link to `~/.config/holst-cli/pairing-inbox` (0600); a
+code is useless without the PKCE cookie the waiting CLI holds.
+`holst auth handler` shows who opens `holst://` links now, and
+`holst auth handler remove` deletes the applet. Skip it with
+`holst auth pair --no-handler`; keep the browser closed with `--no-browser`.
+
+Where the applet is not used (other systems, `--no-handler`), open DevTools ->
+Network before pressing the button, copy `code` from the `grant` response and
+paste it, or paste the whole `holst://` link.
+
+Other ways in:
+
+```bash
+# Email and password. The password is never stored; the token and cookie are.
 holst auth login --email you@example.com
 
 # Non-interactive, where there is no terminal for a hidden prompt:
 printf '%s' "$PASSWORD" | holst auth login --email you@example.com --password-stdin
-
-# Pair like the desktop app does
-holst auth pair
 
 # Or copy both halves from the browser: DevTools -> Network -> any /gapi/
 # request -> its Cookie and Authorization request headers

@@ -25,11 +25,12 @@ curl -LsSf https://raw.githubusercontent.com/AntonLisovoy/holst-cli/main/install
 
 ```sh
 holst --version
-holst auth login --email you@example.com
+holst auth login
 holst --help
 ```
 
-Нужен аккаунт Holst. Вход сохраняет cookie сессии и токен.
+`holst auth login` откроет Holst в браузере, там нажмите
+«Открыть в приложении». Нужен аккаунт Holst. Вход сохраняет cookie сессии и токен.
 Персональный API-токен не подходит для управления досками.
 
 ## Навык для агента
