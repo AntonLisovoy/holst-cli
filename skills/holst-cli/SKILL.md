@@ -120,6 +120,7 @@ holst --json auth status --verify
    | `doctor_failed` | `holst doctor` found a failing check | Read the `checks` list and follow each `hint` |
 
    When something fails and the cause is unclear, run `holst --json doctor` first: it checks versions, the state directory, credentials, Node, yjs and the API, and names a fix for each problem.
+   If `doctor` is clean and a live read or write still fails, run the same command again with `HOLST_DEBUG=1` (or `--debug`) and read stderr: one redacted line per HTTP request, socket protocol message and phase, with timings; stdout and `--json` output are unchanged.
 3. **Inspect before mutating.** Run `board info` or `content summary` before
    renaming or deleting.
 4. **Deletion is confirmed by default.** Non-interactive calls need `-y`, and
@@ -345,6 +346,7 @@ $ holst --json board list      # without credentials
 | `HOLST_COOKIE` | Session cookie; Holst SaaS needs it together with the token |
 | `HOLST_NODE` | Path to the Node binary used for board contents and live edits |
 | `HOLST_YJS_PATH` | Directory that directly contains the `yjs` package (normally a `node_modules` directory) |
+| `HOLST_DEBUG` | `1` traces HTTP requests, board-session frames and timings to stderr, redacted |
 
 ## Cautions
 

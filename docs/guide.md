@@ -299,17 +299,43 @@ Credentials, tokens and cookies are always masked.
 | `base_url` | value and where it came from | - | - |
 | `node` | Node 21 or newer with `WebSocket` | missing or too old: `content` commands and live edits are unavailable | - |
 | `yjs` | the `yjs` package loads | not found or not loadable | - |
+| `scripts` | `hud.js` and `convert.js` are present and load with yjs | - | a script is missing or does not load |
 | `api` | the host answered any HTTP response | - | no answer, or timeout |
 | `auth` | the stored credentials identify a user | - | rejected (401/403) or any other error |
 
 `api` and `auth` are skipped with `--offline`; `auth` is also skipped when
-`credentials` or `api` failed. In `--json` mode the report is
+`credentials` or `api` failed, and `scripts` when Node or yjs is not usable. In
+`--json` mode the report is
 `{"ok": ..., "checks": [...]}`, and a failing report carries
 `"error_type": "doctor_failed"` and an `error` summary.
 
 ```bash
 holst doctor --offline
 holst --json doctor
+```
+
+### Debug output: `--debug`
+
+`holst --debug <command>`, or `HOLST_DEBUG=1` in the environment, writes a
+trace to stderr: one line per HTTP request (method, host, path, status, time to
+headers, retry, size), per board-session protocol message (direction, type, document,
+`left`, update id, Simple or Link, bytes), per request the Node helper makes
+(origin, path, whether credentials were attached, status, bytes) and per phase
+(connect, sync, plan, ack, finish), each with the time since start. stdout is
+unchanged, so `--json` output stays valid. Under `holst mcp` the variable works
+the same way and the trace lands in the server log.
+
+Tokens and cookies are masked wherever they appear (URL-encoded too), every
+query value is masked (the keys stay), another document's name on the socket
+is shown as `<other>`, and no header, request or frame body is printed. The
+trace still names hosts, your board ids and paths: read it before you share
+it. An error that quotes the server shows at most 400 characters of it, with
+credentials masked, with or without `--debug`; server text longer than 65,536 characters
+is replaced by `<omitted: N characters>` instead of being quoted.
+
+```bash
+holst --debug content summary
+HOLST_DEBUG=1 holst --json board list > boards.json
 ```
 
 ### MCP server: `holst mcp`
@@ -465,6 +491,7 @@ the CLI — `--json` in, ids out:
 | `HOLST_AUTH_SCHEME` | Token header form: `bearer`, `token`, `raw`, `x-auth-token` | `bearer` |
 | `HOLST_CLI_STATE_DIR` | Session/credentials directory | `~/.config/holst-cli` |
 | `HOLST_LIVE_TESTS` | Set to `1` to enable the live test suite | unset |
+| `HOLST_DEBUG` | Set to `1` (or pass `--debug`) to trace HTTP requests, board-session frames and timings to stderr, redacted | unset |
 
 ## Running the tests
 

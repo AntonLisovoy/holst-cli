@@ -100,6 +100,8 @@ Options:
   --out FILE       Write the JSON result to this file and print only a short
                    summary. Implies --json.
   --base-url TEXT  Holst host (for on-premise installs).
+  --debug          Log HTTP requests, board-session frames and timings to
+                   stderr, redacted. Same as HOLST_DEBUG=1.
   --version        Show the version and exit.
   -h, --help       Show this message and exit.
 
